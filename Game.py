@@ -11,6 +11,9 @@ WINDOW_HEIGHT = 600
 window = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
 pygame.display.set_caption("Memory Game")
 
+# Load sound effect
+match_sound = pygame.mixer.Sound("sound/match.wav")  
+
 # Define colors
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
@@ -86,6 +89,8 @@ while running:
                     if cards[card1][0] == cards[card2][0]:
                         matched_cards.extend(selected_cards)
                         selected_cards = []
+                        # Play the match sound effect
+                        match_sound.play()
                     else:
                         pygame.time.delay(1000)  # Delay for 1 second
                         cards[card1] = (cards[card1][0], False)
