@@ -136,7 +136,7 @@ while running:
 
     if game_over:
         font = pygame.font.Font(None, 72)
-        text = font.render("You Win!", True, GREEN)
+        text = font.render("Well done!", True, GREEN)
         text_rect = text.get_rect(center=(WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2 - 100))
         window.blit(text, text_rect)
 
