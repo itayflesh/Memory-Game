@@ -20,12 +20,14 @@ WHITE = (255, 255, 255)
 GRAY = (128, 128, 128)
 GREEN = (50, 205, 50)
 RESET_BUTTON_COLOR = (255, 0, 0)  # Red color for the reset button
+PLAY_AGAIN_BUTTON_COLOR = (0, 0, 255)
 
 # Define card properties
 CARD_WIDTH = 100
 CARD_HEIGHT = 100
 CARD_SPACING = 20
-CARD_SYMBOLS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
+CARD_SYMBOLS = ['A', 'B']
+# CARD_SYMBOLS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
 NUM_CARDS = len(CARD_SYMBOLS) * 2
 cards = [(symbol, False) for symbol in CARD_SYMBOLS * 2]
 random.shuffle(cards)
@@ -93,6 +95,27 @@ def draw_timer():
     text = font.render(timer_text, True, WHITE)
     window.blit(text, (WINDOW_WIDTH // 2 - text.get_width() // 2, 40))  # Center the timer text
 
+# Function to draw the background rectangle behind the "Well done!" message
+def draw_background_rectangle():
+    rect_width = 300
+    rect_height = 200
+    rect_x = WINDOW_WIDTH // 2 - rect_width // 2
+    rect_y = WINDOW_HEIGHT // 2 - rect_height // 2
+    pygame.draw.rect(window, WHITE, (rect_x, rect_y, rect_width, rect_height))
+    # Draw "Well done!" text inside the rectangle
+    font = pygame.font.Font(None, 72)
+    text = font.render("Well done!", True, GREEN)
+    text_rect = text.get_rect(center=(WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2 - 40))  # Adjusted position
+    window.blit(text, text_rect)
+    
+    # Draw reset button inside the rectangle
+    reset_button_rect = pygame.Rect(rect_x + rect_width // 2 - RESET_BUTTON_WIDTH // 2, rect_y + rect_height - 80, RESET_BUTTON_WIDTH, RESET_BUTTON_HEIGHT)  # Adjusted position
+    pygame.draw.rect(window, PLAY_AGAIN_BUTTON_COLOR, reset_button_rect)
+    font = pygame.font.Font(None, 36)
+    text = font.render("Play again", True, WHITE)
+    text_rect = text.get_rect(center=reset_button_rect.center)
+    window.blit(text, text_rect)
+
 # Game loop
 running = True
 while running:
@@ -101,8 +124,14 @@ while running:
             running = False
         elif event.type == pygame.MOUSEBUTTONDOWN:
             mouse_x, mouse_y = event.pos
-            # Check if the reset button is clicked
-            if RESET_BUTTON_X <= mouse_x <= RESET_BUTTON_X + RESET_BUTTON_WIDTH and RESET_BUTTON_Y <= mouse_y <= RESET_BUTTON_Y + RESET_BUTTON_HEIGHT:
+            if game_over:
+                # Check if the new reset button is clicked
+                rect_x = WINDOW_WIDTH // 2 - 150
+                rect_y = WINDOW_HEIGHT // 2 - 100
+                reset_button_rect = pygame.Rect(rect_x + 50, rect_y + 110, RESET_BUTTON_WIDTH, RESET_BUTTON_HEIGHT)
+                if reset_button_rect.collidepoint(mouse_x, mouse_y):
+                    reset_game()
+            elif RESET_BUTTON_X <= mouse_x <= RESET_BUTTON_X + RESET_BUTTON_WIDTH and RESET_BUTTON_Y <= mouse_y <= RESET_BUTTON_Y + RESET_BUTTON_HEIGHT:
                 reset_game()
             elif not game_over:
                 clicked_card = None
@@ -144,10 +173,7 @@ while running:
     draw_reset_button()  # Draw the reset button
 
     if game_over:
-        font = pygame.font.Font(None, 72)
-        text = font.render("Well done!", True, GREEN)
-        text_rect = text.get_rect(center=(WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2 - 100))
-        window.blit(text, text_rect)
+        draw_background_rectangle()  # Draw the background rectangle
 
     pygame.display.update()
 
