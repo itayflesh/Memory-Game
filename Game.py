@@ -35,6 +35,7 @@ selected_cards = []
 matched_cards = []
 game_over = False
 start_time = None
+final_time = None  # Variable to store the final time when the game is over
 
 # Reset button properties
 RESET_BUTTON_WIDTH = 200
@@ -44,13 +45,14 @@ RESET_BUTTON_Y = WINDOW_HEIGHT - 100
 
 # Function to reset the game
 def reset_game():
-    global cards, selected_cards, matched_cards, game_over, start_time
+    global cards, selected_cards, matched_cards, game_over, start_time, final_time
     cards = [(symbol, False) for symbol in CARD_SYMBOLS * 2]
     random.shuffle(cards)
     selected_cards = []
     matched_cards = []
     game_over = False
     start_time = None
+    final_time = None  # Reset the final_time variable
 
 # Function to draw the reset button
 def draw_reset_button():
@@ -77,10 +79,16 @@ def draw_cards():
 
 # Function to draw the timer
 def draw_timer():
-    elapsed_time = time.time() - start_time
-    minutes = int(elapsed_time // 60)
-    seconds = int(elapsed_time % 60)
-    timer_text = f"Time: {minutes:02d}:{seconds:02d}"
+    if not game_over:
+        elapsed_time = time.time() - start_time
+        minutes = int(elapsed_time // 60)
+        seconds = int(elapsed_time % 60)
+        timer_text = f"Time: {minutes:02d}:{seconds:02d}"
+    else:
+        final_minutes = int(final_time // 60)
+        final_seconds = int(final_time % 60)
+        timer_text = f"Final Time: {final_minutes:02d}:{final_seconds:02d}"
+
     font = pygame.font.Font(None, 60)
     text = font.render(timer_text, True, WHITE)
     window.blit(text, (WINDOW_WIDTH // 2 - text.get_width() // 2, 40))  # Center the timer text
@@ -125,6 +133,7 @@ while running:
 
                     if len(matched_cards) == NUM_CARDS:
                         game_over = True
+                        final_time = time.time() - start_time  # Store the final time when the game is over
 
     if not start_time:
         start_time = time.time()
