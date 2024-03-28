@@ -7,7 +7,7 @@ pygame.init()
 
 # Set up the game window
 WINDOW_WIDTH = 500
-WINDOW_HEIGHT = 600
+WINDOW_HEIGHT = 700
 window = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
 pygame.display.set_caption("Memory Game")
 
@@ -93,10 +93,9 @@ while running:
             running = False
         elif event.type == pygame.MOUSEBUTTONDOWN:
             mouse_x, mouse_y = event.pos
-            if game_over:
-                # Check if the reset button is clicked
-                if RESET_BUTTON_X <= mouse_x <= RESET_BUTTON_X + RESET_BUTTON_WIDTH and RESET_BUTTON_Y <= mouse_y <= RESET_BUTTON_Y + RESET_BUTTON_HEIGHT:
-                    reset_game()
+            # Check if the reset button is clicked
+            if RESET_BUTTON_X <= mouse_x <= RESET_BUTTON_X + RESET_BUTTON_WIDTH and RESET_BUTTON_Y <= mouse_y <= RESET_BUTTON_Y + RESET_BUTTON_HEIGHT:
+                reset_game()
             elif not game_over:
                 clicked_card = None
                 for i, card in enumerate(cards):
@@ -133,12 +132,13 @@ while running:
     window.fill(BLACK)
     draw_timer()  # Draw the timer first
     draw_cards()
+    draw_reset_button()  # Draw the reset button
+
     if game_over:
         font = pygame.font.Font(None, 72)
         text = font.render("You Win!", True, GREEN)
         text_rect = text.get_rect(center=(WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2 - 100))
         window.blit(text, text_rect)
-        draw_reset_button()  # Draw the reset button
 
     pygame.display.update()
 
