@@ -48,7 +48,7 @@ except pygame.error:
 
 # Reset game function
 def reset_game():
-    global cards, revealed_cards, matched_cards, game_over, start_time, final_time, flip_back_timer
+    global cards, revealed_cards, matched_cards, game_over, start_time, final_time, flip_back_timer, hint_button_clicked
     cards = [(symbol, False) for symbol in CARD_SYMBOLS * 2]
     random.shuffle(cards)
     revealed_cards = []
@@ -57,6 +57,7 @@ def reset_game():
     start_time = time.time()
     final_time = None
     flip_back_timer = 0
+    hint_button_clicked = False  # Reset hint button status
 
 reset_game()
 
