@@ -26,14 +26,13 @@ PLAY_AGAIN_BUTTON_COLOR = (0, 0, 255)
 CARD_WIDTH = 100
 CARD_HEIGHT = 100
 CARD_SPACING = 20
-CARD_SYMBOLS = ['A', 'B']
-# CARD_SYMBOLS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
+CARD_SYMBOLS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
 NUM_CARDS = len(CARD_SYMBOLS) * 2
 cards = [(symbol, False) for symbol in CARD_SYMBOLS * 2]
 random.shuffle(cards)
 
 # Game state variables
-selected_cards = []
+revealed_cards = []
 matched_cards = []
 game_over = False
 start_time = None
@@ -47,10 +46,10 @@ RESET_BUTTON_Y = WINDOW_HEIGHT - 100
 
 # Function to reset the game
 def reset_game():
-    global cards, selected_cards, matched_cards, game_over, start_time, final_time
+    global cards, revealed_cards, matched_cards, game_over, start_time, final_time
     cards = [(symbol, False) for symbol in CARD_SYMBOLS * 2]
     random.shuffle(cards)
-    selected_cards = []
+    revealed_cards = []
     matched_cards = []
     game_over = False
     start_time = None
@@ -70,7 +69,13 @@ def draw_cards():
         symbol, is_revealed = card
         x = (i % 4) * (CARD_WIDTH + CARD_SPACING) + CARD_SPACING
         y = ((i // 4) * (CARD_HEIGHT + CARD_SPACING)) + CARD_SPACING + 80  # Adjust card position
-        if is_revealed or (len(selected_cards) == 2 and card in selected_cards):
+        if is_revealed or i in matched_cards:
+            pygame.draw.rect(window, WHITE, (x, y, CARD_WIDTH, CARD_HEIGHT))
+            font = pygame.font.Font(None, 72)
+            text = font.render(symbol, True, BLACK)
+            text_rect = text.get_rect(center=(x + CARD_WIDTH // 2, y + CARD_HEIGHT // 2))
+            window.blit(text, text_rect)
+        elif i in revealed_cards:
             pygame.draw.rect(window, WHITE, (x, y, CARD_WIDTH, CARD_HEIGHT))
             font = pygame.font.Font(None, 72)
             text = font.render(symbol, True, BLACK)
@@ -144,21 +149,20 @@ while running:
                         break
 
                 if clicked_card is not None:
-                    if len(selected_cards) < 2:
-                        cards[clicked_card] = (cards[clicked_card][0], True)
-                        selected_cards.append(clicked_card)
-                    if len(selected_cards) == 2:
-                        card1, card2 = selected_cards
-                        if cards[card1][0] == cards[card2][0]:
-                            matched_cards.extend(selected_cards)
-                            selected_cards = []
-                            # Play the match sound effect
+                    revealed_cards.append(clicked_card)
+                    cards[clicked_card] = (cards[clicked_card][0], True)
+
+                    if len(revealed_cards) == 2:
+                        first_card, second_card = revealed_cards
+                        if cards[first_card][0] == cards[second_card][0]:
+                            matched_cards.extend(revealed_cards)
                             match_sound.play()
+                            revealed_cards = []
                         else:
                             pygame.time.delay(1000)  # Delay for 1 second
-                            cards[card1] = (cards[card1][0], False)
-                            cards[card2] = (cards[card2][0], False)
-                            selected_cards = []
+                            cards[first_card] = (cards[first_card][0], False)
+                            cards[second_card] = (cards[second_card][0], False)
+                            revealed_cards = []
 
                     if len(matched_cards) == NUM_CARDS:
                         game_over = True
