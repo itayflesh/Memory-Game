@@ -11,22 +11,21 @@ WINDOW_HEIGHT = 700
 window = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
 pygame.display.set_caption("Memory Game")
 
-# Load sound effect
-match_sound = pygame.mixer.Sound("sound/match.wav")
-
 # Define colors
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
 GRAY = (128, 128, 128)
 GREEN = (50, 205, 50)
-RESET_BUTTON_COLOR = (255, 0, 0)  # Red color for the reset button
-PLAY_AGAIN_BUTTON_COLOR = (0, 0, 255)
+RED = (255, 0, 0)
+BLUE = (0, 0, 255)
+LIGHT_GRAY = (200, 200, 200)  # Background color for the game over message
 
 # Define card properties
 CARD_WIDTH = 100
 CARD_HEIGHT = 100
 CARD_SPACING = 20
-CARD_SYMBOLS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
+CARD_SYMBOLS = ['A', 'B']
+# CARD_SYMBOLS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
 NUM_CARDS = len(CARD_SYMBOLS) * 2
 cards = [(symbol, False) for symbol in CARD_SYMBOLS * 2]
 random.shuffle(cards)
@@ -36,149 +35,125 @@ revealed_cards = []
 matched_cards = []
 game_over = False
 start_time = None
-final_time = None  # Variable to store the final time when the game is over
+final_time = None
+flip_back_timer = 0
+flip_back_delay = 1000
 
-# Reset button properties
-RESET_BUTTON_WIDTH = 200
-RESET_BUTTON_HEIGHT = 50
-RESET_BUTTON_X = WINDOW_WIDTH // 2 - RESET_BUTTON_WIDTH // 2
-RESET_BUTTON_Y = WINDOW_HEIGHT - 100
+# Load sound effect
+try:
+    match_sound = pygame.mixer.Sound("sound/match.wav")
+except pygame.error:
+    match_sound = None
+    print("Sound file not found. Continuing without sound.")
 
-# Function to reset the game
+# Reset game function
 def reset_game():
-    global cards, revealed_cards, matched_cards, game_over, start_time, final_time
+    global cards, revealed_cards, matched_cards, game_over, start_time, final_time, flip_back_timer
     cards = [(symbol, False) for symbol in CARD_SYMBOLS * 2]
     random.shuffle(cards)
     revealed_cards = []
     matched_cards = []
     game_over = False
-    start_time = None
-    final_time = None  # Reset the final_time variable
+    start_time = time.time()
+    final_time = None
+    flip_back_timer = 0
 
-# Function to draw the reset button
+reset_game()
+
+# Draw reset button
 def draw_reset_button():
-    pygame.draw.rect(window, RESET_BUTTON_COLOR, (RESET_BUTTON_X, RESET_BUTTON_Y, RESET_BUTTON_WIDTH, RESET_BUTTON_HEIGHT))
-    font = pygame.font.Font(None, 36)
-    text = font.render("Reset", True, WHITE)
-    text_rect = text.get_rect(center=(RESET_BUTTON_X + RESET_BUTTON_WIDTH // 2, RESET_BUTTON_Y + RESET_BUTTON_HEIGHT // 2))
-    window.blit(text, text_rect)
+    pygame.draw.rect(window, RED, [WINDOW_WIDTH // 2 - 100, WINDOW_HEIGHT - 60, 200, 40])
+    font = pygame.font.SysFont(None, 36)
+    text = font.render('Reset', True, WHITE)
+    window.blit(text, [WINDOW_WIDTH // 2 - text.get_width() / 2, WINDOW_HEIGHT - 55])
 
-# Function to draw the cards
+# Draw cards
 def draw_cards():
-    for i, card in enumerate(cards):
-        symbol, is_revealed = card
+    for i, (symbol, is_revealed) in enumerate(cards):
         x = (i % 4) * (CARD_WIDTH + CARD_SPACING) + CARD_SPACING
-        y = ((i // 4) * (CARD_HEIGHT + CARD_SPACING)) + CARD_SPACING + 80  # Adjust card position
+        y = ((i // 4) * (CARD_HEIGHT + CARD_SPACING)) + CARD_SPACING + 80
         if is_revealed or i in matched_cards:
             pygame.draw.rect(window, WHITE, (x, y, CARD_WIDTH, CARD_HEIGHT))
-            font = pygame.font.Font(None, 72)
+            font = pygame.font.SysFont(None, 72)
             text = font.render(symbol, True, BLACK)
-            text_rect = text.get_rect(center=(x + CARD_WIDTH // 2, y + CARD_HEIGHT // 2))
-            window.blit(text, text_rect)
-        elif i in revealed_cards:
-            pygame.draw.rect(window, WHITE, (x, y, CARD_WIDTH, CARD_HEIGHT))
-            font = pygame.font.Font(None, 72)
-            text = font.render(symbol, True, BLACK)
-            text_rect = text.get_rect(center=(x + CARD_WIDTH // 2, y + CARD_HEIGHT // 2))
-            window.blit(text, text_rect)
+            window.blit(text, (x + (CARD_WIDTH - text.get_width()) / 2, y + (CARD_HEIGHT - text.get_height()) / 2))
         else:
             pygame.draw.rect(window, GRAY, (x, y, CARD_WIDTH, CARD_HEIGHT))
 
-# Function to draw the timer
+# Draw timer
 def draw_timer():
     if not game_over:
         elapsed_time = time.time() - start_time
-        minutes = int(elapsed_time // 60)
-        seconds = int(elapsed_time % 60)
-        timer_text = f"Time: {minutes:02d}:{seconds:02d}"
     else:
-        final_minutes = int(final_time // 60)
-        final_seconds = int(final_time % 60)
-        timer_text = f"Final Time: {final_minutes:02d}:{final_seconds:02d}"
+        elapsed_time = final_time
+    font = pygame.font.SysFont(None, 36)
+    minutes = int(elapsed_time // 60)
+    seconds = int(elapsed_time % 60)
+    timer_text = font.render(f"Time: {minutes:02}:{seconds:02}", True, WHITE)
+    text_rect = timer_text.get_rect(center=(WINDOW_WIDTH / 2, 20))
+    window.blit(timer_text, text_rect)
 
-    font = pygame.font.Font(None, 60)
-    text = font.render(timer_text, True, WHITE)
-    window.blit(text, (WINDOW_WIDTH // 2 - text.get_width() // 2, 40))  # Center the timer text
+# Draw game over screen with a background rectangle
+def draw_game_over_screen():
+    if game_over:
+        # Background rectangle
+        bg_rect = pygame.Rect(WINDOW_WIDTH // 2 - 160, WINDOW_HEIGHT // 2 - 60, 320, 140)
+        pygame.draw.rect(window, LIGHT_GRAY, bg_rect)
 
-# Function to draw the background rectangle behind the "Well done!" message
-def draw_background_rectangle():
-    rect_width = 300
-    rect_height = 200
-    rect_x = WINDOW_WIDTH // 2 - rect_width // 2
-    rect_y = WINDOW_HEIGHT // 2 - rect_height // 2
-    pygame.draw.rect(window, WHITE, (rect_x, rect_y, rect_width, rect_height))
-    # Draw "Well done!" text inside the rectangle
-    font = pygame.font.Font(None, 72)
-    text = font.render("Well done!", True, GREEN)
-    text_rect = text.get_rect(center=(WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2 - 40))  # Adjusted position
-    window.blit(text, text_rect)
-    
-    # Draw reset button inside the rectangle
-    reset_button_rect = pygame.Rect(rect_x + rect_width // 2 - RESET_BUTTON_WIDTH // 2, rect_y + rect_height - 80, RESET_BUTTON_WIDTH, RESET_BUTTON_HEIGHT)  # Adjusted position
-    pygame.draw.rect(window, PLAY_AGAIN_BUTTON_COLOR, reset_button_rect)
-    font = pygame.font.Font(None, 36)
-    text = font.render("Play again", True, WHITE)
-    text_rect = text.get_rect(center=reset_button_rect.center)
-    window.blit(text, text_rect)
+        font = pygame.font.SysFont(None, 48)
+        text = font.render("Well done!", True, GREEN)
+        text_rect = text.get_rect(center=(WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2 - 20))
+        window.blit(text, text_rect)
 
-# Game loop
+        play_again_rect = pygame.Rect(WINDOW_WIDTH / 2 - 100, WINDOW_HEIGHT / 2 + 20, 200, 40)
+        pygame.draw.rect(window, BLUE, play_again_rect)
+        play_again_text = font.render('Play again', True, WHITE)
+        window.blit(play_again_text, (WINDOW_WIDTH / 2 - play_again_text.get_width() / 2, WINDOW_HEIGHT / 2 + 25))
+        return play_again_rect
+    return None
+
+# Main game loop
 running = True
+play_again_rect = None
 while running:
+    current_time = pygame.time.get_ticks()
+    window.fill(BLACK)
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
         elif event.type == pygame.MOUSEBUTTONDOWN:
-            mouse_x, mouse_y = event.pos
-            if game_over:
-                # Check if the new reset button is clicked
-                rect_x = WINDOW_WIDTH // 2 - 150
-                rect_y = WINDOW_HEIGHT // 2 - 100
-                reset_button_rect = pygame.Rect(rect_x + 50, rect_y + 110, RESET_BUTTON_WIDTH, RESET_BUTTON_HEIGHT)
-                if reset_button_rect.collidepoint(mouse_x, mouse_y):
-                    reset_game()
-            elif RESET_BUTTON_X <= mouse_x <= RESET_BUTTON_X + RESET_BUTTON_WIDTH and RESET_BUTTON_Y <= mouse_y <= RESET_BUTTON_Y + RESET_BUTTON_HEIGHT:
+            mouse_x, mouse_y = pygame.mouse.get_pos()
+            if play_again_rect and play_again_rect.collidepoint(mouse_x, mouse_y):
                 reset_game()
+                play_again_rect = None
             elif not game_over:
-                clicked_card = None
+                # Card flip logic
                 for i, card in enumerate(cards):
-                    symbol, is_revealed = card
-                    x = (i % 4) * (CARD_WIDTH + CARD_SPACING) + CARD_SPACING
-                    y = ((i // 4) * (CARD_HEIGHT + CARD_SPACING)) + CARD_SPACING + 80
-                    if x <= mouse_x <= x + CARD_WIDTH and y <= mouse_y <= y + CARD_HEIGHT and not is_revealed:
-                        clicked_card = i
-                        break
-
-                if clicked_card is not None:
-                    revealed_cards.append(clicked_card)
-                    cards[clicked_card] = (cards[clicked_card][0], True)
-
-                    if len(revealed_cards) == 2:
-                        first_card, second_card = revealed_cards
-                        if cards[first_card][0] == cards[second_card][0]:
-                            matched_cards.extend(revealed_cards)
-                            match_sound.play()
-                            revealed_cards = []
-                        else:
-                            pygame.time.delay(1000)  # Delay for 1 second
-                            cards[first_card] = (cards[first_card][0], False)
-                            cards[second_card] = (cards[second_card][0], False)
-                            revealed_cards = []
-
-                    if len(matched_cards) == NUM_CARDS:
-                        game_over = True
-                        final_time = time.time() - start_time  # Store the final time when the game is over
-
-    if not start_time:
-        start_time = time.time()
-
-    window.fill(BLACK)
-    draw_timer()  # Draw the timer first
+                    card_x = (i % 4) * (CARD_WIDTH + CARD_SPACING) + CARD_SPACING
+                    card_y = (i // 4) * (CARD_HEIGHT + CARD_SPACING) + CARD_SPACING + 80
+                    if card_x < mouse_x < card_x + CARD_WIDTH and card_y < mouse_y < card_y + CARD_HEIGHT:
+                        if not card[1] and len(revealed_cards) < 2:
+                            revealed_cards.append(i)
+                            cards[i] = (card[0], True)
+                            if len(revealed_cards) == 2:
+                                flip_back_timer = current_time + flip_back_delay
+                                if cards[revealed_cards[0]][0] == cards[revealed_cards[1]][0]:
+                                    matched_cards += revealed_cards
+                                    revealed_cards = []
+                                    if match_sound:
+                                        match_sound.play()
+                                    if len(matched_cards) == NUM_CARDS:
+                                        game_over = True
+                                        final_time = time.time() - start_time
+    if len(revealed_cards) == 2 and current_time >= flip_back_timer:
+        if cards[revealed_cards[0]][0] != cards[revealed_cards[1]][0]:
+            for i in revealed_cards:
+                cards[i] = (cards[i][0], False)
+        revealed_cards = []
     draw_cards()
-    draw_reset_button()  # Draw the reset button
-
-    if game_over:
-        draw_background_rectangle()  # Draw the background rectangle
-
+    draw_timer()
+    draw_reset_button()
+    play_again_rect = draw_game_over_screen()
     pygame.display.update()
 
 pygame.quit()
