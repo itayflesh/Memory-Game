@@ -1,12 +1,13 @@
 import pygame
 import random
 import time
+import os
 
 # Initialize Pygame
 pygame.init()
 
 # Set up the game window
-WINDOW_WIDTH = 500
+WINDOW_WIDTH = 600  # Increased window width to accommodate the hint button
 WINDOW_HEIGHT = 700
 window = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
 pygame.display.set_caption("Memory Game")
@@ -24,8 +25,7 @@ LIGHT_GRAY = (200, 200, 200)  # Background color for the game over message
 CARD_WIDTH = 100
 CARD_HEIGHT = 100
 CARD_SPACING = 20
-CARD_SYMBOLS = ['A', 'B']
-# CARD_SYMBOLS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
+CARD_SYMBOLS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
 NUM_CARDS = len(CARD_SYMBOLS) * 2
 cards = [(symbol, False) for symbol in CARD_SYMBOLS * 2]
 random.shuffle(cards)
@@ -40,10 +40,10 @@ flip_back_timer = 0
 flip_back_delay = 1000
 
 # Load sound effect
+match_sound = None
 try:
     match_sound = pygame.mixer.Sound("sound/match.wav")
 except pygame.error:
-    match_sound = None
     print("Sound file not found. Continuing without sound.")
 
 # Reset game function
@@ -61,11 +61,11 @@ def reset_game():
 reset_game()
 
 # Draw reset button
-def draw_reset_button():
-    pygame.draw.rect(window, RED, [WINDOW_WIDTH // 2 - 100, WINDOW_HEIGHT - 60, 200, 40])
-    font = pygame.font.SysFont(None, 36)
-    text = font.render('Reset', True, WHITE)
-    window.blit(text, [WINDOW_WIDTH // 2 - text.get_width() / 2, WINDOW_HEIGHT - 55])
+reset_button_rect = pygame.Rect(WINDOW_WIDTH // 2 - 100, WINDOW_HEIGHT - 60, 200, 40)
+
+# Draw hint button
+hint_button_rect = pygame.Rect(WINDOW_WIDTH - 150, WINDOW_HEIGHT - 60, 120, 40)
+hint_button_clicked = False  # Flag to track if the hint button has been clicked
 
 # Draw cards
 def draw_cards():
@@ -90,8 +90,7 @@ def draw_timer():
     minutes = int(elapsed_time // 60)
     seconds = int(elapsed_time % 60)
     timer_text = font.render(f"Time: {minutes:02}:{seconds:02}", True, WHITE)
-    text_rect = timer_text.get_rect(center=(WINDOW_WIDTH / 2, 20))
-    window.blit(timer_text, text_rect)
+    window.blit(timer_text, (5, 5))
 
 # Draw game over screen with a background rectangle
 def draw_game_over_screen():
@@ -115,6 +114,9 @@ def draw_game_over_screen():
 # Main game loop
 running = True
 play_again_rect = None
+hint_timer = 0
+hint_card_index = None
+
 while running:
     current_time = pygame.time.get_ticks()
     window.fill(BLACK)
@@ -126,6 +128,16 @@ while running:
             if play_again_rect and play_again_rect.collidepoint(mouse_x, mouse_y):
                 reset_game()
                 play_again_rect = None
+            elif reset_button_rect.collidepoint(mouse_x, mouse_y):
+                reset_game()
+            elif hint_button_rect.collidepoint(mouse_x, mouse_y) and not hint_button_clicked:
+                # Generate a hint if hint button is clicked and not already clicked before
+                hint_button_clicked = True
+                unrevealed_cards = [i for i, (symbol, is_revealed) in enumerate(cards) if not is_revealed]
+                if unrevealed_cards:
+                    hint_card_index = random.choice(unrevealed_cards)
+                    cards[hint_card_index] = (cards[hint_card_index][0], True)
+                    hint_timer = current_time + 2000  # Set hint timer for 2 seconds
             elif not game_over:
                 # Card flip logic
                 for i, card in enumerate(cards):
@@ -152,7 +164,22 @@ while running:
         revealed_cards = []
     draw_cards()
     draw_timer()
-    draw_reset_button()
+    pygame.draw.rect(window, RED, reset_button_rect)
+    font = pygame.font.SysFont(None, 36)
+    text = font.render('Reset', True, WHITE)
+    window.blit(text, [WINDOW_WIDTH // 2 - text.get_width() / 2, WINDOW_HEIGHT - 55])
+
+    # Draw hint button only if it hasn't been clicked yet
+    if not hint_button_clicked:
+        pygame.draw.rect(window, BLUE, hint_button_rect)
+        hint_text = font.render('Hint', True, WHITE)
+        window.blit(hint_text, [WINDOW_WIDTH - 90, WINDOW_HEIGHT - 55])
+
+    # Check if the hint timer has expired to hide the hinted card
+    if hint_timer > 0 and current_time >= hint_timer:
+        cards[hint_card_index] = (cards[hint_card_index][0], False)
+        hint_timer = 0
+
     play_again_rect = draw_game_over_screen()
     pygame.display.update()
 
