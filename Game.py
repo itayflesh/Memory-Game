@@ -1,13 +1,12 @@
 import pygame
 import random
 import time
-import os
 
 # Initialize Pygame
 pygame.init()
 
 # Set up the game window
-WINDOW_WIDTH = 600  # Increased window width to accommodate the hint button
+WINDOW_WIDTH = 600
 WINDOW_HEIGHT = 700
 window = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
 pygame.display.set_caption("Memory Game")
@@ -19,13 +18,15 @@ GRAY = (128, 128, 128)
 GREEN = (50, 205, 50)
 RED = (255, 0, 0)
 BLUE = (0, 0, 255)
-LIGHT_GRAY = (200, 200, 200)  # Background color for the game over message
+LIGHT_GRAY = (200, 200, 200)
+YELLOW = (255, 255, 0)
 
 # Define card properties
 CARD_WIDTH = 100
 CARD_HEIGHT = 100
 CARD_SPACING = 20
-CARD_SYMBOLS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
+CARD_SYMBOLS = ['A', 'B']
+# CARD_SYMBOLS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
 NUM_CARDS = len(CARD_SYMBOLS) * 2
 cards = [(symbol, False) for symbol in CARD_SYMBOLS * 2]
 random.shuffle(cards)
@@ -38,6 +39,9 @@ start_time = None
 final_time = None
 flip_back_timer = 0
 flip_back_delay = 1000
+players_choice = None
+current_player = 1
+hint_used = False  # Variable to track if the hint has been used
 
 # Load sound effect
 match_sound = None
@@ -48,7 +52,7 @@ except pygame.error:
 
 # Reset game function
 def reset_game():
-    global cards, revealed_cards, matched_cards, game_over, start_time, final_time, flip_back_timer, hint_button_clicked
+    global cards, revealed_cards, matched_cards, game_over, start_time, final_time, flip_back_timer, hint_button_clicked, current_player, hint_used
     cards = [(symbol, False) for symbol in CARD_SYMBOLS * 2]
     random.shuffle(cards)
     revealed_cards = []
@@ -57,7 +61,9 @@ def reset_game():
     start_time = time.time()
     final_time = None
     flip_back_timer = 0
-    hint_button_clicked = False  # Reset hint button status
+    hint_button_clicked = False
+    current_player = 1
+    hint_used = False  # Reset hint used status
 
 reset_game()
 
@@ -66,9 +72,21 @@ reset_button_rect = pygame.Rect(WINDOW_WIDTH // 2 - 100, WINDOW_HEIGHT - 60, 200
 
 # Draw hint button
 hint_button_rect = pygame.Rect(WINDOW_WIDTH - 150, WINDOW_HEIGHT - 60, 120, 40)
-hint_button_clicked = False  # Flag to track if the hint button has been clicked
+hint_button_clicked = False
 
-# Draw cards
+# Function to handle drawing of player choice screen
+def draw_player_choice_screen():
+    font = pygame.font.SysFont(None, 48)
+    text_1 = font.render("1 Player", True, WHITE)
+    text_2 = font.render("2 Players", True, WHITE)
+    player_1_button = pygame.Rect(WINDOW_WIDTH // 2 - 150, WINDOW_HEIGHT // 2 - 100, 300, 50)
+    player_2_button = pygame.Rect(WINDOW_WIDTH // 2 - 150, WINDOW_HEIGHT // 2, 300, 50)
+    pygame.draw.rect(window, RED, player_1_button)
+    pygame.draw.rect(window, BLUE, player_2_button)
+    window.blit(text_1, (WINDOW_WIDTH // 2 - text_1.get_width() / 2, WINDOW_HEIGHT // 2 - 90))
+    window.blit(text_2, (WINDOW_WIDTH // 2 - text_2.get_width() / 2, WINDOW_HEIGHT // 2 + 10))
+    return player_1_button, player_2_button
+
 def draw_cards():
     for i, (symbol, is_revealed) in enumerate(cards):
         x = (i % 4) * (CARD_WIDTH + CARD_SPACING) + CARD_SPACING
@@ -81,7 +99,6 @@ def draw_cards():
         else:
             pygame.draw.rect(window, GRAY, (x, y, CARD_WIDTH, CARD_HEIGHT))
 
-# Draw timer
 def draw_timer():
     if not game_over:
         elapsed_time = time.time() - start_time
@@ -93,24 +110,29 @@ def draw_timer():
     timer_text = font.render(f"Time: {minutes:02}:{seconds:02}", True, WHITE)
     window.blit(timer_text, (5, 5))
 
-# Draw game over screen with a background rectangle
 def draw_game_over_screen():
     if game_over:
-        # Background rectangle
-        bg_rect = pygame.Rect(WINDOW_WIDTH // 2 - 160, WINDOW_HEIGHT // 2 - 60, 320, 140)
+        bg_rect = pygame.Rect(WINDOW_WIDTH // 2 - 160, WINDOW_HEIGHT // 2 - 60, 320, 120)
         pygame.draw.rect(window, LIGHT_GRAY, bg_rect)
-
         font = pygame.font.SysFont(None, 48)
-        text = font.render("Well done!", True, GREEN)
-        text_rect = text.get_rect(center=(WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2 - 20))
-        window.blit(text, text_rect)
-
-        play_again_rect = pygame.Rect(WINDOW_WIDTH / 2 - 100, WINDOW_HEIGHT / 2 + 20, 200, 40)
+        text = font.render("Game Over!", True, GREEN)
+        window.blit(text, (WINDOW_WIDTH // 2 - text.get_width() / 2, WINDOW_HEIGHT // 2 - 20))
+        if players_choice == '1':
+            play_again_text = "Play Again"
+        else:
+            play_again_text = "Play Again"
+        play_again_rect = pygame.Rect(WINDOW_WIDTH // 2 - 100, WINDOW_HEIGHT // 2 + 40, 200, 50)
         pygame.draw.rect(window, BLUE, play_again_rect)
-        play_again_text = font.render('Play again', True, WHITE)
-        window.blit(play_again_text, (WINDOW_WIDTH / 2 - play_again_text.get_width() / 2, WINDOW_HEIGHT / 2 + 25))
+        text = font.render(play_again_text, True, WHITE)
+        window.blit(text, (WINDOW_WIDTH // 2 - text.get_width() / 2, WINDOW_HEIGHT // 2 + 50))
         return play_again_rect
     return None
+
+def draw_player_indicator():
+    if players_choice == '2':
+        font = pygame.font.SysFont(None, 36)
+        text = font.render(f"Player {current_player}'s Turn", True, YELLOW)
+        window.blit(text, (5, WINDOW_HEIGHT - 100))
 
 # Main game loop
 running = True
@@ -119,6 +141,23 @@ hint_timer = 0
 hint_card_index = None
 
 while running:
+    if players_choice is None:
+        window.fill(BLACK)
+        player_1_button, player_2_button = draw_player_choice_screen()
+        pygame.display.update()
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                mouse_x, mouse_y = pygame.mouse.get_pos()
+                if player_1_button.collidepoint(mouse_x, mouse_y):
+                    players_choice = '1'
+                    reset_game()
+                elif player_2_button.collidepoint(mouse_x, mouse_y):
+                    players_choice = '2'
+                    reset_game()
+        continue
+
     current_time = pygame.time.get_ticks()
     window.fill(BLACK)
     for event in pygame.event.get():
@@ -131,57 +170,58 @@ while running:
                 play_again_rect = None
             elif reset_button_rect.collidepoint(mouse_x, mouse_y):
                 reset_game()
-            elif hint_button_rect.collidepoint(mouse_x, mouse_y) and not hint_button_clicked:
-                # Generate a hint if hint button is clicked and not already clicked before
+            elif hint_button_rect.collidepoint(mouse_x, mouse_y) and not hint_used and players_choice == '1':
+                hint_used = True  # Mark the hint as used
                 hint_button_clicked = True
-                unrevealed_cards = [i for i, (symbol, is_revealed) in enumerate(cards) if not is_revealed]
+                unrevealed_cards = [i for i, (symbol, is_revealed) in enumerate(cards) if not is_revealed and i not in matched_cards]
                 if unrevealed_cards:
                     hint_card_index = random.choice(unrevealed_cards)
                     cards[hint_card_index] = (cards[hint_card_index][0], True)
-                    hint_timer = current_time + 2000  # Set hint timer for 2 seconds
+                    hint_timer = current_time + 2000
             elif not game_over:
-                # Card flip logic
-                for i, card in enumerate(cards):
-                    card_x = (i % 4) * (CARD_WIDTH + CARD_SPACING) + CARD_SPACING
-                    card_y = (i // 4) * (CARD_HEIGHT + CARD_SPACING) + CARD_SPACING + 80
-                    if card_x < mouse_x < card_x + CARD_WIDTH and card_y < mouse_y < card_y + CARD_HEIGHT:
-                        if not card[1] and len(revealed_cards) < 2:
-                            revealed_cards.append(i)
-                            cards[i] = (card[0], True)
-                            if len(revealed_cards) == 2:
+                for i, (symbol, is_revealed) in enumerate(cards):
+                    x = (i % 4) * (CARD_WIDTH + CARD_SPACING) + CARD_SPACING
+                    y = ((i // 4) * (CARD_HEIGHT + CARD_SPACING)) + CARD_SPACING + 80
+                    if x < mouse_x < x + CARD_WIDTH and y < mouse_y < y + CARD_HEIGHT and not is_revealed and len(revealed_cards) < 2:
+                        revealed_cards.append(i)
+                        cards[i] = (cards[i][0], True)
+                        if len(revealed_cards) == 2:
+                            if cards[revealed_cards[0]][0] == cards[revealed_cards[1]][0]:
+                                matched_cards.extend(revealed_cards)
+                                revealed_cards = []
+                                if match_sound:
+                                    match_sound.play()
+                                if len(matched_cards) == NUM_CARDS:
+                                    game_over = True
+                                    final_time = time.time() - start_time
+                            else:
                                 flip_back_timer = current_time + flip_back_delay
-                                if cards[revealed_cards[0]][0] == cards[revealed_cards[1]][0]:
-                                    matched_cards += revealed_cards
-                                    revealed_cards = []
-                                    if match_sound:
-                                        match_sound.play()
-                                    if len(matched_cards) == NUM_CARDS:
-                                        game_over = True
-                                        final_time = time.time() - start_time
+                                if players_choice == '2':
+                                    current_player = 2 if current_player == 1 else 1
+
     if len(revealed_cards) == 2 and current_time >= flip_back_timer:
-        if cards[revealed_cards[0]][0] != cards[revealed_cards[1]][0]:
-            for i in revealed_cards:
-                cards[i] = (cards[i][0], False)
+        for i in revealed_cards:
+            cards[i] = (cards[i][0], False)
         revealed_cards = []
-    draw_cards()
-    draw_timer()
-    pygame.draw.rect(window, RED, reset_button_rect)
-    font = pygame.font.SysFont(None, 36)
-    text = font.render('Reset', True, WHITE)
-    window.blit(text, [WINDOW_WIDTH // 2 - text.get_width() / 2, WINDOW_HEIGHT - 55])
 
-    # Draw hint button only if it hasn't been clicked yet
-    if not hint_button_clicked:
-        pygame.draw.rect(window, BLUE, hint_button_rect)
-        hint_text = font.render('Hint', True, WHITE)
-        window.blit(hint_text, [WINDOW_WIDTH - 90, WINDOW_HEIGHT - 55])
-
-    # Check if the hint timer has expired to hide the hinted card
     if hint_timer > 0 and current_time >= hint_timer:
         cards[hint_card_index] = (cards[hint_card_index][0], False)
         hint_timer = 0
+        hint_button_clicked = False
 
+    draw_cards()
+    draw_timer()
     play_again_rect = draw_game_over_screen()
+    pygame.draw.rect(window, RED, reset_button_rect)
+    reset_text = pygame.font.SysFont(None, 36).render('Reset', True, WHITE)
+    window.blit(reset_text, (reset_button_rect.x + (reset_button_rect.width - reset_text.get_width()) / 2, reset_button_rect.y + 5))
+
+    if players_choice == '1' and not hint_button_clicked and not hint_used:
+        pygame.draw.rect(window, BLUE, hint_button_rect)
+        hint_text = pygame.font.SysFont(None, 36).render('Hint', True, WHITE)
+        window.blit(hint_text, (hint_button_rect.x + (hint_button_rect.width - hint_text.get_width()) / 2, hint_button_rect.y + 5))
+
+    draw_player_indicator()
     pygame.display.update()
 
 pygame.quit()
