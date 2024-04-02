@@ -9,7 +9,7 @@ pygame.init()
 WINDOW_WIDTH = 600
 WINDOW_HEIGHT = 700
 window = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
-pygame.display.set_caption("Memory Game - Attack Mode")
+pygame.display.set_caption("Memory Game")
 
 # Define colors
 BLACK = (0, 0, 0)
@@ -25,7 +25,7 @@ YELLOW = (255, 255, 0)
 CARD_WIDTH = 100
 CARD_HEIGHT = 100
 CARD_SPACING = 20
-CARD_SYMBOLS = ['A', 'B']
+CARD_SYMBOLS = ['A', 'B' , 'C' , 'D', 'E' , 'F' ,'G', 'H']
 NUM_CARDS = len(CARD_SYMBOLS) * 2
 cards = [(symbol, False) for symbol in CARD_SYMBOLS * 2]
 random.shuffle(cards)
@@ -112,6 +112,9 @@ def draw_cards():
             window.blit(text, (x + (CARD_WIDTH - text.get_width()) / 2, y + (CARD_HEIGHT - text.get_height()) / 2))
         else:
             pygame.draw.rect(window, GRAY, (x, y, CARD_WIDTH, CARD_HEIGHT))
+            font = pygame.font.SysFont(None, 36)
+            text = font.render(str(i + 1), True, WHITE)
+            window.blit(text, (x + (CARD_WIDTH - text.get_width()) / 2, y + (CARD_HEIGHT - text.get_height()) / 2))
 
 def draw_timer():
     global game_over
@@ -254,9 +257,10 @@ while running:
     draw_cards()
     draw_timer()
     play_again_rect = draw_game_over_screen()
-    pygame.draw.rect(window, RED, reset_button_rect)
-    reset_text = pygame.font.SysFont(None, 36).render('Reset', True, WHITE)
-    window.blit(reset_text, (reset_button_rect.x + (reset_button_rect.width - reset_text.get_width()) / 2, reset_button_rect.y + 5))
+    if players_choice != 'attack':
+        pygame.draw.rect(window, RED, reset_button_rect)
+        reset_text = pygame.font.SysFont(None, 36).render('Reset', True, WHITE)
+        window.blit(reset_text, (reset_button_rect.x + (reset_button_rect.width - reset_text.get_width()) / 2, reset_button_rect.y + 5))
 
     if players_choice == '1' and not hint_button_clicked and not hint_used:
         pygame.draw.rect(window, BLUE, hint_button_rect)
