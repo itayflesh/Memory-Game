@@ -52,8 +52,7 @@ Board = (224, 224, 224)
 CARD_WIDTH = 100
 CARD_HEIGHT = 100
 CARD_SPACING = 20
-CARD_SYMBOLS = ['A', 'B']
-# CARD_SYMBOLS = ['A', 'B' , 'C' , 'D', 'E' , 'F' ,'G', 'H']
+CARD_SYMBOLS = ['A', 'B' , 'C' , 'D', 'E' , 'F' ,'G', 'H']
 NUM_CARDS = len(CARD_SYMBOLS) * 2
 cards = [(symbol, False) for symbol in CARD_SYMBOLS * 2]
 random.shuffle(cards)
