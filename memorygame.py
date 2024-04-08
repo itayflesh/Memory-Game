@@ -4,6 +4,9 @@ import time
 import pyaudio
 import json
 from vosk import Model, KaldiRecognizer
+import threading
+import sounddevice as sd
+import numpy as np
 
 # Dictionary mapping words to their numeric values
 word_to_number = {
@@ -24,9 +27,11 @@ word_to_number = {
     "fourteen": 14,
     "fifteen": 15,
     "sixteen": 16 , 
-    "play again": 17
+    "reset": 17
 
 }
+
+
 
 # Initialize Pygame
 pygame.init()
@@ -79,54 +84,31 @@ except pygame.error:
 
 countdown_time = 61
 
+# Initialize Vosk model
+model = Model("vosk-model-small-en-us-0.15")
+
+# Initialize Vosk recognizer
+rec = KaldiRecognizer(model, 16000)
+# Initialize PyAudio
+p = pyaudio.PyAudio()
+
 # Function to convert word to number
 def word_to_int(word):
     return word_to_number.get(word, None)
 
+
+# Function to capture and process audio
 def talk():
-    # Initialize Vosk model
-    model = Model("vosk-model-small-en-us-0.15")
-
-    # Initialize Vosk recognizer
-    rec = KaldiRecognizer(model, 16000)
-
-    # Initialize PyAudio
-    p = pyaudio.PyAudio()
-
-    # Open microphone stream
     stream = p.open(format=pyaudio.paInt16, channels=1, rate=16000, input=True, frames_per_buffer=8000)
-
-    print("Listening for 3 seconds...")
-
-    # Record audio for 3 seconds
-    start_time = time.time()
     audio_data = b""
-    while time.time() - start_time < 3:
-        data = stream.read(4000)  # Read audio data from microphone
-        audio_data += data
-
-    # Perform speech recognition
+    data = stream.read(18000)  # Read audio data from microphone
+    audio_data += data
     rec.AcceptWaveform(audio_data)
     result = rec.Result()
-    print(result)
-
-    # Parse JSON string to a Python dictionary
     result_dict = json.loads(result)
-
-    # Extract recognized text
     recognized_text = result_dict.get("text", "").strip().lower()
-
-    # Check if recognized text exists in the dictionary
-    if recognized_text in word_to_number:
-        number = word_to_int(recognized_text)
-        return number
-    else:
-        print("The recognized word is not in the dictionary.")
-
-    # Close microphone stream and PyAudio
-    stream.stop_stream()
-    stream.close()
-    p.terminate()
+    return recognized_text
+    
 
 def reset_game():
     global cards, revealed_cards, matched_cards, game_over, start_time, countdown_time, flip_back_timer, hint_button_clicked, current_player, hint_used
@@ -253,7 +235,7 @@ def draw_player_indicator():
             pygame.draw.rect(window, GREEN, bg_rect2)
             text2 = font.render("player 2", True, BLACK)
             window.blit(text2, (WINDOW_WIDTH // 2 + 40 , WINDOW_HEIGHT // 2 + 240))
-            
+  
 
 def draw_game_well_done_message():
     bg_rect = pygame.Rect(WINDOW_WIDTH // 2 - 160, WINDOW_HEIGHT // 2 - 60, 320, 120)
@@ -364,10 +346,9 @@ while running:
             running = False
         else:
             if not game_over:
-                # for i, (symbol, is_revealed) in enumerate(cards):
-                    # print("check")
-                    pygame.time.delay(1000)
-                    x = talk()
+                    speech = talk()
+                    print(speech) 
+                    x = word_to_int(speech)
                     if isinstance(x, int):
                         if x == 17:
                            reset_game()
@@ -410,7 +391,7 @@ while running:
 
     if players_choice == 'voice' :
         pygame.draw.rect(window, RED, reset_button_rect_voice)
-        reset_text = pygame.font.SysFont(None, 36).render('say "Play again" to reset', True, WHITE)
+        reset_text = pygame.font.SysFont(None, 36).render('say "Reset" to reset', True, WHITE)
         window.blit(reset_text, (reset_button_rect.x + (reset_button_rect.width - reset_text.get_width()) / 2, reset_button_rect.y + 5))
 
     if players_choice == '1' and not hint_button_clicked and not hint_used:
