@@ -7,6 +7,18 @@ from vosk import Model, KaldiRecognizer
 import threading
 import sounddevice as sd
 import numpy as np
+import threading
+import queue
+
+stop_audio_thread = False
+audio_queue = queue.Queue()
+
+def audio_listener_thread():
+    global stop_audio_thread
+
+    while not stop_audio_thread:
+        speech = talk()
+        audio_queue.put(speech)
 
 # Dictionary mapping words to their numeric values
 word_to_number = {
@@ -27,7 +39,7 @@ word_to_number = {
     "fourteen": 14,
     "fifteen": 15,
     "sixteen": 16 , 
-    "reset": 17
+    "play again": 17
 
 }
 
@@ -101,7 +113,7 @@ def word_to_int(word):
 def talk():
     stream = p.open(format=pyaudio.paInt16, channels=1, rate=16000, input=True, frames_per_buffer=8000)
     audio_data = b""
-    data = stream.read(18000)  # Read audio data from microphone
+    data = stream.read(30000)  # Read audio data from microphone
     audio_data += data
     rec.AcceptWaveform(audio_data)
     result = rec.Result()
@@ -267,6 +279,7 @@ running = True
 play_again_rect = None
 hint_timer = 0
 hint_card_index = None
+audio_listener = None
 
 while running:
     if players_choice is None:
@@ -344,16 +357,22 @@ while running:
         # for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
+            stop_audio_thread = True
         else:
             if not game_over:
-                    speech = talk()
-                    print(speech) 
+                if audio_listener is None:
+                    audio_listener = threading.Thread(target=audio_listener_thread)
+                    audio_listener.start()
+
+                while not audio_queue.empty():
+                    speech = audio_queue.get()
+                    print(speech)
                     x = word_to_int(speech)
                     if isinstance(x, int):
                         if x == 17:
-                           reset_game()
-                        else: 
-                            i = x -1
+                            reset_game()
+                        else:
+                            i = x - 1
                             if i not in revealed_cards and len(revealed_cards) < 2:
                                 revealed_cards.append(i)
                                 cards[i] = (cards[i][0], True)
@@ -365,7 +384,7 @@ while running:
                                             match_sound.play()
                                         if len(matched_cards) == NUM_CARDS:
                                             game_over = True
-                                            final_time = time.time() - start_time    
+                                            final_time = time.time() - start_time
                                     else:
                                         flip_back_timer = current_time + flip_back_delay
 
@@ -391,7 +410,7 @@ while running:
 
     if players_choice == 'voice' :
         pygame.draw.rect(window, RED, reset_button_rect_voice)
-        reset_text = pygame.font.SysFont(None, 36).render('say "Reset" to reset', True, WHITE)
+        reset_text = pygame.font.SysFont(None, 36).render('say "Play again" to reset', True, WHITE)
         window.blit(reset_text, (reset_button_rect.x + (reset_button_rect.width - reset_text.get_width()) / 2, reset_button_rect.y + 5))
 
     if players_choice == '1' and not hint_button_clicked and not hint_used:
