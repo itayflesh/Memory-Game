@@ -44,7 +44,6 @@ word_to_number = {
 }
 
 
-
 # Initialize Pygame
 pygame.init()
 
@@ -54,16 +53,25 @@ WINDOW_HEIGHT = 700
 window = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
 pygame.display.set_caption("Memory Game")
 
+# Load background image
+background_image = pygame.image.load("photos/background.jpeg")
+background_image = pygame.transform.scale(background_image, (WINDOW_WIDTH, WINDOW_HEIGHT))
+
 # Define colors
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
 GRAY = (128, 128, 128)
-GREEN = (50, 205, 50)
-RED = (255, 0, 0)
-BLUE = (0, 0, 255)
+GREEN = (30, 132, 73)
+RED = (152, 104, 104)
+HINT_COLOR = (145, 56, 49)
 LIGHT_GRAY = (200, 200, 200)
 YELLOW = (200, 200, 0)
-Board = (224, 224, 224)
+Board = (139, 0, 0)
+player_1_color = (136, 8, 8)
+player_1_voice_color = (165, 42, 42)
+player_2_color = (128, 0, 32)
+attack_color = (196, 30, 58)
+play_again_color = (123, 36, 28)
 
 # Define card properties
 CARD_WIDTH = 100
@@ -73,6 +81,19 @@ CARD_SYMBOLS = ['A', 'B' , 'C' , 'D', 'E' , 'F' ,'G', 'H']
 NUM_CARDS = len(CARD_SYMBOLS) * 2
 cards = [(symbol, False) for symbol in CARD_SYMBOLS * 2]
 random.shuffle(cards)
+
+# Load card back image
+card_back_image = pygame.image.load("photos/card_back.png")
+card_back_image = pygame.transform.scale(card_back_image, (CARD_WIDTH, CARD_HEIGHT))
+card_back_surface = pygame.Surface((CARD_WIDTH, CARD_HEIGHT))
+card_back_surface.blit(card_back_image, (0, 0))
+
+# Load card photo images
+card_images = {}
+for symbol in CARD_SYMBOLS:
+    card_image = pygame.image.load(f"photos/{symbol}.png")
+    card_image = pygame.transform.scale(card_image, (CARD_WIDTH, CARD_HEIGHT))
+    card_images[symbol] = card_image
 
 # Game state variables
 revealed_cards = []
@@ -148,6 +169,7 @@ def reset_game_attack():
     current_player = 1
     hint_used = False
     
+    
 reset_button_rect = pygame.Rect(WINDOW_WIDTH // 2 - 100, WINDOW_HEIGHT - 60, 200, 40)
 reset_button_rect_voice = pygame.Rect(WINDOW_WIDTH // 2 - 150, WINDOW_HEIGHT - 60, 300, 40)
 hint_button_rect = pygame.Rect(WINDOW_WIDTH // 2 -60, WINDOW_HEIGHT - 120, 120, 40)
@@ -159,18 +181,35 @@ def draw_player_choice_screen():
     text_2 = font.render("2 Players", True, WHITE)
     text_3 = font.render("Attack Mode", True, WHITE)
     text_4 = font.render("Voice Mode", True, WHITE)
+    
     player_1_button = pygame.Rect(WINDOW_WIDTH // 2 - 150, WINDOW_HEIGHT // 2 - 165, 300, 50)
     player_2_button = pygame.Rect(WINDOW_WIDTH // 2 - 150, WINDOW_HEIGHT // 2, 300, 50)
     attack_button = pygame.Rect(WINDOW_WIDTH // 2 - 150, WINDOW_HEIGHT // 2 + 100, 300, 50)
     voice_control_button = pygame.Rect(WINDOW_WIDTH // 2 - 100, WINDOW_HEIGHT // 2 - 100, 200, 50)
-    pygame.draw.rect(window, RED, player_1_button)
-    pygame.draw.rect(window, BLUE, player_2_button)
-    pygame.draw.rect(window, GREEN, attack_button)
-    pygame.draw.rect(window, YELLOW, voice_control_button)
+    
+    border_width = 2
+
+    # Draw player 1 button with border
+    pygame.draw.rect(window, player_1_color, player_1_button)
+    pygame.draw.rect(window, BLACK, player_1_button, border_width)
+
+    # Draw player 2 button with border
+    pygame.draw.rect(window, player_2_color, player_2_button)
+    pygame.draw.rect(window, BLACK, player_2_button, border_width)
+
+    # Draw attack button with border
+    pygame.draw.rect(window, attack_color, attack_button)
+    pygame.draw.rect(window, BLACK, attack_button, border_width)
+
+    # Draw voice control button with border
+    pygame.draw.rect(window, player_1_voice_color, voice_control_button)
+    pygame.draw.rect(window, BLACK, voice_control_button, border_width)
+
     window.blit(text_1, (WINDOW_WIDTH // 2 - text_1.get_width() / 2, WINDOW_HEIGHT // 2 - 155))
     window.blit(text_2, (WINDOW_WIDTH // 2 - text_2.get_width() / 2, WINDOW_HEIGHT // 2 +10))
     window.blit(text_3, (WINDOW_WIDTH // 2 - text_3.get_width() / 2, WINDOW_HEIGHT // 2 + 110))
     window.blit(text_4, (WINDOW_WIDTH // 2 - text_4.get_width() / 2, WINDOW_HEIGHT // 2 - 90))
+    
     return player_1_button, player_2_button, attack_button, voice_control_button
 
 
@@ -180,14 +219,37 @@ def draw_cards():
         y = ((i // 4) * (CARD_HEIGHT + CARD_SPACING)) + CARD_SPACING + 80
         if is_revealed or i in matched_cards:
             pygame.draw.rect(window, GRAY, (x, y, CARD_WIDTH, CARD_HEIGHT))
-            font = pygame.font.SysFont(None, 72)
-            text = font.render(symbol, True, BLACK)
-            window.blit(text, (x + (CARD_WIDTH - text.get_width()) / 2, y + (CARD_HEIGHT - text.get_height()) / 2))
+            card_image = card_images[symbol]
+            window.blit(card_image, (x, y))
         else:
-            pygame.draw.rect(window, GRAY, (x, y, CARD_WIDTH, CARD_HEIGHT))
+            window.blit(card_back_surface, (x, y))
             font = pygame.font.SysFont(None, 36)
             text = font.render(str(i + 1), True, WHITE)
             window.blit(text, (x + (CARD_WIDTH - text.get_width()) / 2, y + (CARD_HEIGHT - text.get_height()) / 2))
+
+def flip_card_animation(card_index, symbol):
+    card_rect = pygame.Rect((card_index % 4) * (CARD_WIDTH + CARD_SPACING) + CARD_SPACING,
+                            ((card_index // 4) * (CARD_HEIGHT + CARD_SPACING)) + CARD_SPACING + 80,
+                            CARD_WIDTH, CARD_HEIGHT)
+    
+    animation_surface = pygame.Surface((CARD_WIDTH, CARD_HEIGHT), pygame.SRCALPHA)
+    
+    for angle in range(0, 180, 10):
+        animation_surface.fill((0, 0, 0, 0))  # Clear the animation surface
+        
+        rotated_card_back = pygame.transform.rotate(card_back_surface, angle)
+        rotated_card_front = pygame.transform.rotate(card_images[symbol], angle)
+        
+        if angle < 90:
+            animation_surface.blit(rotated_card_back, ((CARD_WIDTH - rotated_card_back.get_width()) // 2,
+                                                       (CARD_HEIGHT - rotated_card_back.get_height()) // 2))
+        else:
+            animation_surface.blit(rotated_card_front, ((CARD_WIDTH - rotated_card_front.get_width()) // 2,
+                                                        (CARD_HEIGHT - rotated_card_front.get_height()) // 2))
+        
+        window.blit(animation_surface, card_rect)
+        pygame.display.update(card_rect)
+        pygame.time.delay(20)
 
 def draw_timer():
     global game_over
@@ -204,7 +266,7 @@ def draw_timer():
     font = pygame.font.SysFont(None, 50)
     minutes = int(elapsed_time // 60)
     seconds = int(elapsed_time % 60)
-    timer_text = font.render(f"Time: {minutes:02}:{seconds:02}", True, BLACK)
+    timer_text = font.render(f"Time: {minutes:02}:{seconds:02}", True, WHITE)
     window.blit(timer_text, (155, 40))
 
 def draw_game_over_screen():
@@ -217,12 +279,6 @@ def draw_game_over_screen():
 
 def draw_player_indicator():
     if players_choice == '2':
-        # font = pygame.font.SysFont(None, 36)
-        # text = font.render(f"Player 1", True, BLACK)
-        # window.blit(text, (50, WINDOW_HEIGHT -110))
-        # font = pygame.font.SysFont(None, 36)
-        # text = font.render(f"Player 2", True, BLACK)
-        # window.blit(text, (280, WINDOW_HEIGHT -110))
         if current_player == 1:
             font = pygame.font.SysFont(None, 35)
 
@@ -251,28 +307,41 @@ def draw_player_indicator():
 
 def draw_game_well_done_message():
     bg_rect = pygame.Rect(WINDOW_WIDTH // 2 - 160, WINDOW_HEIGHT // 2 - 60, 320, 120)
-    pygame.draw.rect(window, BLACK, bg_rect)
+    pygame.draw.rect(window, play_again_color, bg_rect)
+    # Add black border to the background rectangle
+    pygame.draw.rect(window, BLACK, bg_rect, 2)
+
     font = pygame.font.SysFont(None, 48)
-    text = font.render("Well Done!", True, GREEN)
-    window.blit(text, (WINDOW_WIDTH // 2 - text.get_width() / 2, WINDOW_HEIGHT // 2 - 20))
+    text = font.render("Well Done!", True, BLACK)
+    window.blit(text, (WINDOW_WIDTH // 2 - text.get_width() / 2, WINDOW_HEIGHT // 2 - 45))
+
     play_again_text = "Play Again"
-    play_again_rect = pygame.Rect(WINDOW_WIDTH // 2 - 100, WINDOW_HEIGHT // 2 + 40, 200, 50)
-    pygame.draw.rect(window, BLUE, play_again_rect)
+    play_again_rect = pygame.Rect(WINDOW_WIDTH // 2 - 100, WINDOW_HEIGHT // 2, 200, 50)
+    pygame.draw.rect(window, HINT_COLOR, play_again_rect)
+    # Add black border to the "Play Again" rectangle
+    pygame.draw.rect(window, BLACK, play_again_rect, 2)
+
     text = font.render(play_again_text, True, WHITE)
-    window.blit(text, (WINDOW_WIDTH // 2 - text.get_width() / 2, WINDOW_HEIGHT // 2 + 50))
+    window.blit(text, (WINDOW_WIDTH // 2 - text.get_width() / 2, WINDOW_HEIGHT // 2 + 10))
+
     return play_again_rect
 
 def draw_game_over_message():
     bg_rect = pygame.Rect(WINDOW_WIDTH // 2 - 160, WINDOW_HEIGHT // 2 - 60, 320, 120)
-    pygame.draw.rect(window, BLACK, bg_rect)
+    pygame.draw.rect(window, play_again_color, bg_rect)
+    pygame.draw.rect(window, BLACK, bg_rect, 2)
+
     font = pygame.font.SysFont(None, 48)
-    text = font.render("Game Over!", True, RED)
-    window.blit(text, (WINDOW_WIDTH // 2 - text.get_width() / 2, WINDOW_HEIGHT // 2 - 20))
+    text = font.render("Game Over!", True, BLACK)
+    window.blit(text, (WINDOW_WIDTH // 2 - text.get_width() / 2, WINDOW_HEIGHT // 2 - 45))
+    
     play_again_text = "Play Again"
-    play_again_rect = pygame.Rect(WINDOW_WIDTH // 2 - 100, WINDOW_HEIGHT // 2 + 40, 200, 50)
-    pygame.draw.rect(window, BLUE, play_again_rect)
+    play_again_rect = pygame.Rect(WINDOW_WIDTH // 2 - 100, WINDOW_HEIGHT // 2 , 200, 50)
+    pygame.draw.rect(window, HINT_COLOR, play_again_rect)
+    pygame.draw.rect(window, BLACK, play_again_rect, 2)
+
     text = font.render(play_again_text, True, WHITE)
-    window.blit(text, (WINDOW_WIDTH // 2 - text.get_width() / 2, WINDOW_HEIGHT // 2 + 50))
+    window.blit(text, (WINDOW_WIDTH // 2 - text.get_width() / 2, WINDOW_HEIGHT // 2 + 10))
     return play_again_rect
 
 running = True
@@ -283,7 +352,7 @@ audio_listener = None
 
 while running:
     if players_choice is None:
-        window.fill(Board)
+        window.blit(background_image, (0, 0))
         player_1_button, player_2_button, attack_button, voice_control_button = draw_player_choice_screen()
         pygame.display.update()
         for event in pygame.event.get():
@@ -314,6 +383,7 @@ while running:
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 mouse_x, mouse_y = pygame.mouse.get_pos()
                 if play_again_rect and play_again_rect.collidepoint(mouse_x, mouse_y):
+                    countdown_time = 61
                     reset_game()
                     play_again_rect = None
                 elif reset_button_rect.collidepoint(mouse_x, mouse_y):
@@ -334,6 +404,7 @@ while running:
                             if x < mouse_x < x + CARD_WIDTH and y < mouse_y < y + CARD_HEIGHT and not is_revealed and len(revealed_cards) < 2:
                                 revealed_cards.append(i)
                                 cards[i] = (cards[i][0], True)
+                                flip_card_animation(i, symbol)  # Call the flip animation function
                                 if len(revealed_cards) == 2:
                                     if cards[revealed_cards[0]][0] == cards[revealed_cards[1]][0]:
                                         matched_cards.extend(revealed_cards)
@@ -366,7 +437,7 @@ while running:
 
                 while not audio_queue.empty():
                     speech = audio_queue.get()
-                    print(speech)
+                    # print(speech) // for debug
                     x = word_to_int(speech)
                     if isinstance(x, int):
                         if x == 17:
@@ -405,8 +476,14 @@ while running:
     play_again_rect = draw_game_over_screen()
     if players_choice != 'attack' and players_choice != 'voice' :
         pygame.draw.rect(window, RED, reset_button_rect)
+        border_width = 2
+        border_rect = pygame.Rect(reset_button_rect.left - border_width,
+                                reset_button_rect.top - border_width,
+                                reset_button_rect.width + border_width * 2,
+                                reset_button_rect.height + border_width * 2)
+        pygame.draw.rect(window, BLACK, border_rect, border_width)
         reset_text = pygame.font.SysFont(None, 36).render('Reset', True, WHITE)
-        window.blit(reset_text, (reset_button_rect.x + (reset_button_rect.width - reset_text.get_width()) / 2, reset_button_rect.y + 5))
+        window.blit(reset_text, (reset_button_rect.x + (reset_button_rect.width - reset_text.get_width()) / 2, reset_button_rect.y + 10))
 
     if players_choice == 'voice' :
         pygame.draw.rect(window, RED, reset_button_rect_voice)
@@ -414,7 +491,13 @@ while running:
         window.blit(reset_text, (reset_button_rect.x + (reset_button_rect.width - reset_text.get_width()) / 2, reset_button_rect.y + 5))
 
     if players_choice == '1' and not hint_button_clicked and not hint_used:
-        pygame.draw.rect(window, BLUE, hint_button_rect)
+        pygame.draw.rect(window, HINT_COLOR, hint_button_rect)
+        border_width = 2
+        border_rect = pygame.Rect(hint_button_rect.left - border_width,
+                                hint_button_rect.top - border_width,
+                                hint_button_rect.width + border_width * 2,
+                                hint_button_rect.height + border_width * 2)
+        pygame.draw.rect(window, BLACK, border_rect, border_width)
         hint_text = pygame.font.SysFont(None, 36).render('Hint', True, WHITE)
         window.blit(hint_text, (hint_button_rect.x + (hint_button_rect.width - hint_text.get_width()) / 2, hint_button_rect.y + 5))
 
